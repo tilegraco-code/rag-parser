@@ -1,0 +1,7 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.17
+python-dotenv==1.0.1
+docling==2.15.0
+langchain-openai==0.2.10
+supabase==2.10.0
