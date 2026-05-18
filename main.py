@@ -1,6 +1,8 @@
 import os
 import tempfile
 import logging
+import mimetypes
+from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, Header, HTTPException, Form
@@ -48,7 +50,7 @@ def health():
 @app.post("/parse")
 async def parse(
     file: UploadFile,
-    user_id: str = Form(default=""),
+    project_id: Optional[str] = Form(default=None),
     x_internal_token: str = Header(...),
 ):
     verify_token(x_internal_token)
@@ -58,16 +60,37 @@ async def parse(
     if ext not in allowed:
         raise HTTPException(status_code=400, detail=f"Formato no soportado: {ext}")
 
+    # project_id llega como string del form-data; lo pasamos a int si vino
+    pid: Optional[int] = None
+    if project_id not in (None, ""):
+        try:
+            pid = int(project_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="project_id debe ser un entero"
+            )
+
+    data = await file.read()
+    size_bytes = len(data)
+    mime_type = (
+        file.content_type
+        or mimetypes.guess_type(file.filename or "")[0]
+        or "application/octet-stream"
+    )
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-        tmp.write(await file.read())
+        tmp.write(data)
         tmp_path = tmp.name
 
     try:
-        count = ingest_file(
+        result = ingest_file(
             file_path=tmp_path,
-            metadata={"user_id": user_id, "filename": file.filename},
+            filename=file.filename or f"upload{ext}",
+            mime_type=mime_type,
+            size_bytes=size_bytes,
+            project_id=pid,
         )
     finally:
         os.unlink(tmp_path)
 
-    return {"status": "ok", "chunks_inserted": count}
+    return {"status": "ok", **result}
