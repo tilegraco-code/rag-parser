@@ -55,7 +55,7 @@ async def parse(
 ):
     verify_token(x_internal_token)
 
-    allowed = {".pdf", ".docx", ".doc"}
+    allowed = {".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".html", ".htm", ".md"}
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in allowed:
         raise HTTPException(status_code=400, detail=f"Formato no soportado: {ext}")
